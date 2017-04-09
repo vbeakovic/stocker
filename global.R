@@ -2,6 +2,8 @@
 library(rvest)
 library(readr)
 library(purrr)
+library(dplyr)
+library(stringr)
 
 #### Read in listed stocks ####
 if (file.exists("./data/zse_listed_table.RData")) {
@@ -55,3 +57,57 @@ tickers <- map(zse_listed_table$simbol, function(x) {
 })
 save(tickers, file = "data/tickers.RData")
 }
+
+
+
+#### Market cap data frame ####
+zse_listed_regular_stock <- zse_listed_table %>% 
+                                filter(str_detect(simbol, 'R-A'))
+no_transactions <- c("VDZG-R-A", "PAN-R-A", "DALS-R-A") 
+zse_listed_regular_stock <- filter(zse_listed_regular_stock, !(simbol %in% no_transactions))
+
+
+zse_listed_regular_stock_details <- map(tickers, function(x) {
+        if (str_detect(names(x)[1], "R-A")) {
+                ticker <- x
+                names(ticker) <- names(x)
+                ticker
+        } 
+}) %>% compact()
+
+#### Take out basic ticker info ####
+tickers_info <- map(zse_listed_regular_stock_details, function(x) {
+        info_box <- map_df(x, function(x) {
+                if (str_detect(x['X1'], "Zadnja cijena")) {
+                        x
+                } else {
+                        return()
+                }
+        })
+        if (nrow(info_box) == 0) {
+                info_box <- NULL
+        } else {
+        info_box$oznaka <- names(x)[1]
+        }
+        info_box
+        #print(paste(class(info_box), names(x)[1]))
+}) %>% compact() %>% bind_rows() %>% filter(nchar(X1) > 1) 
+
+
+
+
+
+
+
+
+
+zse_market_cap <- map2(zse_listed_regular_stock, 
+                          zse_listed_regular_stock_details, 
+                          function(x, y) {
+                                  if (x['simbol'] == names(y)[1]) {
+                                        tmp1 <- as.numeric(gsub(".", "", x = x['broj_izdanih']))
+                                        tmp2 <- as.numeric(y[[length(y)]])
+                                  } else (
+                                          warning("Arguments not aligned")
+                                  )
+                          })
