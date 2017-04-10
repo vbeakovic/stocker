@@ -4,6 +4,7 @@ library(readr)
 library(purrr)
 library(dplyr)
 library(stringr)
+library(tidyr)
 
 #### Read in listed stocks ####
 if (file.exists("./data/zse_listed_table.RData")) {
@@ -61,6 +62,7 @@ save(tickers, file = "data/tickers.RData")
 
 
 #### Market cap data frame ####
+# filter regular marketed stocks
 zse_listed_regular_stock <- zse_listed_table %>% 
                                 filter(str_detect(simbol, 'R-A'))
 no_transactions <- c("VDZG-R-A", "PAN-R-A", "DALS-R-A") 
@@ -75,7 +77,7 @@ zse_listed_regular_stock_details <- map(tickers, function(x) {
         } 
 }) %>% compact()
 
-#### Take out basic ticker info ####
+# Take out basic ticker info #
 tickers_info <- map(zse_listed_regular_stock_details, function(x) {
         info_box <- map_df(x, function(x) {
                 if (str_detect(x['X1'], "Zadnja cijena")) {
@@ -87,27 +89,76 @@ tickers_info <- map(zse_listed_regular_stock_details, function(x) {
         if (nrow(info_box) == 0) {
                 info_box <- NULL
         } else {
-        info_box$oznaka <- names(x)[1]
+        info_box$simbol <- names(x)[1]
         }
         info_box
         #print(paste(class(info_box), names(x)[1]))
-}) %>% compact() %>% bind_rows() %>% filter(nchar(X1) > 1) 
+}) %>% compact() %>% bind_rows() %>% filter(nchar(X1) > 1) %>% 
+        spread(key = X1, value = X2)
+
+# calculate market cap
+zse_regular_stocks_overview <- left_join(zse_listed_regular_stock, tickers_info)
+
+names(zse_regular_stocks_overview) <- c(
+        "simbol",
+        "izdavatelj",
+        "ISIN",
+        "broj_izdanih",
+        "nominala",
+        "datum_uvrstenja",
+        "t52_najniza",
+        "t52_najvisa",
+        "broj_transakcija",
+        "np_kupnja",
+        "np_prodaja",
+        "min_cijena",
+        "max_cijena",
+        "start_cijena",
+        "promjena",
+        "ukupna_kolicina",
+        "ukupni_promet",
+        "zadnja_cijena",
+        "zakljucna_cijena"
+)
+
+zse_regular_stocks_overview <- zse_regular_stocks_overview %>% 
+        mutate_at(vars(
+                broj_izdanih,
+                nominala,
+                t52_najniza,
+                t52_najvisa,
+                broj_transakcija,
+                np_kupnja,
+                np_prodaja,
+                min_cijena,
+                max_cijena,
+                start_cijena,
+                promjena,
+                ukupna_kolicina,
+                ukupni_promet,
+                zadnja_cijena,
+                zakljucna_cijena
+        ), str_replace_all, pattern = "\\.", replacement = "") %>% 
+        mutate_at(vars(
+                broj_izdanih,
+                nominala,
+                t52_najniza,
+                t52_najvisa,
+                broj_transakcija,
+                np_kupnja,
+                np_prodaja,
+                min_cijena,
+                max_cijena,
+                start_cijena,
+                promjena,
+                ukupna_kolicina,
+                ukupni_promet,
+                zadnja_cijena,
+                zakljucna_cijena
+        ), str_replace_all, pattern = "\\,", replacement = ".")
 
 
 
 
 
 
-
-
-
-zse_market_cap <- map2(zse_listed_regular_stock, 
-                          zse_listed_regular_stock_details, 
-                          function(x, y) {
-                                  if (x['simbol'] == names(y)[1]) {
-                                        tmp1 <- as.numeric(gsub(".", "", x = x['broj_izdanih']))
-                                        tmp2 <- as.numeric(y[[length(y)]])
-                                  } else (
-                                          warning("Arguments not aligned")
-                                  )
-                          })
