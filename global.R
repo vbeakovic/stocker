@@ -121,6 +121,20 @@ names(zse_regular_stocks_overview) <- c(
         "zakljucna_cijena"
 )
 
+# remove . and mil
+remove_dot_mil <- function(x) {
+        pos <- grepl(pattern = "mil", x = x)
+        x[pos] <- gsub(pattern = ".", replacement = "", x = x[pos], fixed = TRUE)
+        x[pos] <- gsub(pattern = "mil", replacement = "0000", x = x[pos], fixed = TRUE)
+        x <- gsub("\\s", "", x)
+        as.numeric(x)
+}
+
+# remove % 
+remove_percent <- function(x) {
+        x <- gsub("%", "", x = x, fixed = TRUE)
+}
+
 zse_regular_stocks_overview <- zse_regular_stocks_overview %>% 
         mutate_at(vars(
                 broj_izdanih,
@@ -155,26 +169,28 @@ zse_regular_stocks_overview <- zse_regular_stocks_overview %>%
                 ukupni_promet,
                 zadnja_cijena,
                 zakljucna_cijena
-        ), str_replace_all, pattern = "\\,", replacement = ".") 
-
-
-# remove . and mil
-remove_dot_mil <- function(x) {
-        pos <- grepl(pattern = "mil", x = x)
-        x[pos] <- gsub(pattern = ".", replacement = "", x = x[pos], fixed = TRUE)
-        x[pos] <- gsub(pattern = "mil", replacement = "0000", x = x[pos], fixed = TRUE)
-        x <- gsub("\\s", "", x)
-        as.numeric(x)
-}
-
-zse_regular_stocks_overview <- zse_regular_stocks_overview %>% 
+        ), str_replace_all, pattern = "\\,", replacement = ".") %>% 
         mutate_at(vars(ukupna_kolicina, 
-                       ukupni_promet), remove_dot_mil)
+                       ukupni_promet), remove_dot_mil) %>% 
+        mutate_at(vars(promjena), remove_percent) %>% 
+        mutate_at(vars(
+                broj_izdanih,
+                nominala,
+                t52_najniza,
+                t52_najvisa,
+                broj_transakcija,
+                np_kupnja,
+                np_prodaja,
+                min_cijena,
+                max_cijena,
+                start_cijena,
+                promjena,
+                zadnja_cijena,
+                zakljucna_cijena
+        ), as.numeric)
 
-zse_regular_stocks_overview$ukupna_kolicina <- str_replace_all(zse_regular_stocks_overview$ukupna_kolicina, " ", "")
 
-
-remove_dot_mil(zse_regular_stocks_overview$ukupna_kolicina)
-
-
-?str_trim
+# market cap
+zse_regular_stocks_overview <- zse_regular_stocks_overview %>% 
+        mutate(market_cap = broj_izdanih * zadnja_cijena) %>% 
+        arrange(desc(market_cap))
