@@ -155,10 +155,26 @@ zse_regular_stocks_overview <- zse_regular_stocks_overview %>%
                 ukupni_promet,
                 zadnja_cijena,
                 zakljucna_cijena
-        ), str_replace_all, pattern = "\\,", replacement = ".")
+        ), str_replace_all, pattern = "\\,", replacement = ".") 
 
 
+# remove . and mil
+remove_dot_mil <- function(x) {
+        pos <- grepl(pattern = "mil", x = x)
+        x[pos] <- gsub(pattern = ".", replacement = "", x = x[pos], fixed = TRUE)
+        x[pos] <- gsub(pattern = "mil", replacement = "0000", x = x[pos], fixed = TRUE)
+        x <- gsub("\\s", "", x)
+        as.numeric(x)
+}
+
+zse_regular_stocks_overview <- zse_regular_stocks_overview %>% 
+        mutate_at(vars(ukupna_kolicina, 
+                       ukupni_promet), remove_dot_mil)
+
+zse_regular_stocks_overview$ukupna_kolicina <- str_replace_all(zse_regular_stocks_overview$ukupna_kolicina, " ", "")
 
 
+remove_dot_mil(zse_regular_stocks_overview$ukupna_kolicina)
 
 
+?str_trim
