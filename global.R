@@ -5,6 +5,12 @@ library(purrr)
 library(dplyr)
 library(stringr)
 library(tidyr)
+library(readxl)
+library(gdata)
+library(XLConnect)
+library(xlsx)
+library(reshape2)
+library(lubridate)
 
 #### Read in listed stocks ####
 if (file.exists("./data/zse_listed_table.RData")) {
