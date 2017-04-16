@@ -11,6 +11,8 @@ library(XLConnect)
 library(xlsx)
 library(reshape2)
 library(lubridate)
+library(ggplot2)
+library(zoo)
 
 #### Read in listed stocks ####
 if (file.exists("./data/zse_listed_table.RData")) {
@@ -27,6 +29,22 @@ names(zse_listed_table) <- c("simbol",
                              "nominala", 
                              "datum_uvrstenja")
 zse_listed_table <- zse_listed_table[2:nrow(zse_listed_table), ]
+index_hrk <- grepl("HRK", x = zse_listed_table$nominala)
+index_eur <- grepl("EUR", x = zse_listed_table$nominala)
+index_dem <- grepl("DEM", x = zse_listed_table$nominala)
+# define currency
+zse_listed_table$nominala_valuta <- "-"
+zse_listed_table$nominala_valuta[index_hrk] <- "HRK"
+zse_listed_table$nominala_valuta[index_eur] <- "EUR"
+zse_listed_table$nominala_valuta[index_dem] <- "DEM"
+# clean currency
+zse_listed_table$nominala[index_hrk] <- gsub("HRK", "", x = zse_listed_table$nominala[index_hrk])
+zse_listed_table$nominala[index_eur] <- gsub("EUR", "", x = zse_listed_table$nominala[index_eur])
+zse_listed_table$nominala[index_dem] <- gsub("DEM", "", x = zse_listed_table$nominala[index_dem])
+zse_listed_table$nominala <- gsub("\\.", "", x = zse_listed_table$nominala)
+zse_listed_table$nominala <- gsub(",", "\\.", x = zse_listed_table$nominala)
+# format date
+zse_listed_table$datum_uvrstenja <- as.Date(zse_listed_table$datum_uvrstenja, format = "%d.%m.%Y")
 save(zse_listed_table, file = "data/zse_listed_table.RData")
 }
 
@@ -71,7 +89,9 @@ save(tickers, file = "data/tickers.RData")
 # filter regular marketed stocks
 zse_listed_regular_stock <- zse_listed_table %>% 
                                 filter(str_detect(simbol, 'R-A'))
-no_transactions <- c("VDZG-R-A", "PAN-R-A", "DALS-R-A") 
+no_transactions <- c("VDZG-R-A", "PAN-R-A", "DALS-R-A")
+#, "MRSK-R-A", "BLKL-R-A", 
+#                     "DUPM-R-A", "JLSA-R-A", "HVDC-R-A", "KOSK-R-A") 
 zse_listed_regular_stock <- filter(zse_listed_regular_stock, !(simbol %in% no_transactions))
 
 
@@ -112,6 +132,7 @@ names(zse_regular_stocks_overview) <- c(
         "broj_izdanih",
         "nominala",
         "datum_uvrstenja",
+        "nominala_valuta",
         "t52_najniza",
         "t52_najvisa",
         "broj_transakcija",
@@ -144,7 +165,6 @@ remove_percent <- function(x) {
 zse_regular_stocks_overview <- zse_regular_stocks_overview %>% 
         mutate_at(vars(
                 broj_izdanih,
-                nominala,
                 t52_najniza,
                 t52_najvisa,
                 broj_transakcija,
@@ -161,7 +181,6 @@ zse_regular_stocks_overview <- zse_regular_stocks_overview %>%
         ), str_replace_all, pattern = "\\.", replacement = "") %>% 
         mutate_at(vars(
                 broj_izdanih,
-                nominala,
                 t52_najniza,
                 t52_najvisa,
                 broj_transakcija,
