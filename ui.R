@@ -18,9 +18,14 @@ sidebar <- dashboardSidebar(
 #### Body ####
 body <- dashboardBody(
         tabItems(
-                tabItem(tabName = "uredeno_trziste")
+                tabItem(tabName = "uredeno_trziste", 
+                        fluidRow(
+                                box(width = 12, solidHeader = TRUE, status = NULL,
+                                        dataTableOutput("uredeno_trziste_tablica"))
+                                )
+                        )
+                )
         )
-)
 
 dashboardPage(
         skin = "black",
